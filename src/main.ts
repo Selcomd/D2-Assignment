@@ -25,6 +25,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 type Point = { x: number; y: number };
 let strokes: Point[][] = [];
+let redoStack: Point[][] = [];
 let currentStroke: Point[] | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
@@ -64,7 +65,32 @@ const clearBtn = document.createElement("button");
 clearBtn.textContent = "Clear";
 app.append(clearBtn);
 
+const undoBtn = document.createElement("button");
+undoBtn.textContent = "Undo";
+app.append(undoBtn);
+
+const redoBtn = document.createElement("button");
+redoBtn.textContent = "Redo";
+app.append(redoBtn);
+
 clearBtn.addEventListener("click", () => {
   strokes = [];
+  redoStack = [];
   canvas.dispatchEvent(new Event("drawing-changed"));
+});
+
+undoBtn.addEventListener("click", () => {
+  if (strokes.length > 0) {
+    const stroke = strokes.pop()!;
+    redoStack.push(stroke);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
+});
+
+redoBtn.addEventListener("click", () => {
+  if (redoStack.length > 0) {
+    const stroke = redoStack.pop()!;
+    strokes.push(stroke);
+    canvas.dispatchEvent(new Event("drawing-changed"));
+  }
 });
