@@ -23,23 +23,41 @@ const ctx = canvas.getContext("2d")!;
 ctx.fillStyle = "white";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-let drawing = false;
+type Point = { x: number; y: number };
+let strokes: Point[][] = [];
+let currentStroke: Point[] | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
-  drawing = true;
-  ctx.beginPath();
-  ctx.moveTo(e.offsetX, e.offsetY);
+  currentStroke = [{ x: e.offsetX, y: e.offsetY }];
+  strokes.push(currentStroke);
+  canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (e) => {
-  if (drawing) {
-    ctx.lineTo(e.offsetX, e.offsetY);
-    ctx.stroke();
+  if (currentStroke) {
+    currentStroke.push({ x: e.offsetX, y: e.offsetY });
+    canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
 canvas.addEventListener("mouseup", () => {
-  drawing = false;
+  currentStroke = null;
+});
+
+canvas.addEventListener("drawing-changed", () => {
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "black";
+  ctx.beginPath();
+  for (const stroke of strokes) {
+    if (stroke.length > 0) {
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (const p of stroke) {
+        ctx.lineTo(p.x, p.y);
+      }
+    }
+  }
+  ctx.stroke();
 });
 
 const clearBtn = document.createElement("button");
@@ -47,6 +65,6 @@ clearBtn.textContent = "Clear";
 app.append(clearBtn);
 
 clearBtn.addEventListener("click", () => {
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  strokes = [];
+  canvas.dispatchEvent(new Event("drawing-changed"));
 });
