@@ -22,3 +22,31 @@ app.append(canvas);
 const ctx = canvas.getContext("2d")!;
 ctx.fillStyle = "white";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+let drawing = false;
+
+canvas.addEventListener("mousedown", (e) => {
+  drawing = true;
+  ctx.beginPath();
+  ctx.moveTo(e.offsetX, e.offsetY);
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (drawing) {
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  drawing = false;
+});
+
+const clearBtn = document.createElement("button");
+clearBtn.textContent = "Clear";
+app.append(clearBtn);
+
+clearBtn.addEventListener("click", () => {
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+});
