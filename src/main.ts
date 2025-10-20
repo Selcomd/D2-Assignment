@@ -1,4 +1,4 @@
-//Yahir Rico
+// Yahir Rico
 import "./style.css";
 
 const app = document.createElement("div");
@@ -11,7 +11,7 @@ app.style.height = "100vh";
 document.body.append(app);
 
 const title = document.createElement("h1");
-title.textContent = "Sketchpad";
+title.textContent = "Sticker Sketchpad";
 app.append(title);
 
 const canvas = document.createElement("canvas");
@@ -24,42 +24,61 @@ const ctx = canvas.getContext("2d")!;
 ctx.fillStyle = "white";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-type Point = { x: number; y: number };
-let strokes: Point[][] = [];
-let redoStack: Point[][] = [];
-let currentStroke: Point[] | null = null;
+interface Command {
+  display(ctx: CanvasRenderingContext2D): void;
+}
+
+class MarkerLine implements Command {
+  private points: { x: number; y: number }[] = [];
+
+  constructor(startX: number, startY: number) {
+    this.points.push({ x: startX, y: startY });
+  }
+
+  drag(x: number, y: number) {
+    this.points.push({ x, y });
+  }
+
+  display(ctx: CanvasRenderingContext2D) {
+    if (this.points.length < 2) return;
+    ctx.strokeStyle = "black";
+    ctx.beginPath();
+    ctx.moveTo(this.points[0].x, this.points[0].y);
+    for (let i = 1; i < this.points.length; i++) {
+      ctx.lineTo(this.points[i].x, this.points[i].y);
+    }
+    ctx.stroke();
+  }
+}
+
+let displayList: Command[] = [];
+let redoStack: Command[] = [];
+let currentLine: MarkerLine | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
-  currentStroke = [{ x: e.offsetX, y: e.offsetY }];
-  strokes.push(currentStroke);
+  currentLine = new MarkerLine(e.offsetX, e.offsetY);
+  displayList.push(currentLine);
+  redoStack = [];
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (e) => {
-  if (currentStroke) {
-    currentStroke.push({ x: e.offsetX, y: e.offsetY });
+  if (currentLine) {
+    currentLine.drag(e.offsetX, e.offsetY);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
 canvas.addEventListener("mouseup", () => {
-  currentStroke = null;
+  currentLine = null;
 });
 
 canvas.addEventListener("drawing-changed", () => {
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "black";
-  ctx.beginPath();
-  for (const stroke of strokes) {
-    if (stroke.length > 0) {
-      ctx.moveTo(stroke[0].x, stroke[0].y);
-      for (const p of stroke) {
-        ctx.lineTo(p.x, p.y);
-      }
-    }
+  for (const cmd of displayList) {
+    cmd.display(ctx);
   }
-  ctx.stroke();
 });
 
 const clearBtn = document.createElement("button");
@@ -75,23 +94,21 @@ redoBtn.textContent = "Redo";
 app.append(redoBtn);
 
 clearBtn.addEventListener("click", () => {
-  strokes = [];
+  displayList = [];
   redoStack = [];
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 undoBtn.addEventListener("click", () => {
-  if (strokes.length > 0) {
-    const stroke = strokes.pop()!;
-    redoStack.push(stroke);
+  if (displayList.length > 0) {
+    redoStack.push(displayList.pop()!);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
 
 redoBtn.addEventListener("click", () => {
   if (redoStack.length > 0) {
-    const stroke = redoStack.pop()!;
-    strokes.push(stroke);
+    displayList.push(redoStack.pop()!);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
 });
