@@ -18,7 +18,7 @@ const canvas = document.createElement("canvas");
 canvas.width = 256;
 canvas.height = 256;
 canvas.id = "sketchpad";
-canvas.style.cursor = "none"; 
+canvas.style.cursor = "none";
 app.append(canvas);
 
 const ctx = canvas.getContext("2d")!;
@@ -31,17 +31,12 @@ interface Command {
 
 class MarkerLine implements Command {
   private points: { x: number; y: number }[] = [];
-  private thickness: number;
-
-  constructor(startX: number, startY: number, thickness: number) {
+  constructor(startX: number, startY: number, private thickness: number) {
     this.points.push({ x: startX, y: startY });
-    this.thickness = thickness;
   }
-
   drag(x: number, y: number) {
     this.points.push({ x, y });
   }
-
   display(ctx: CanvasRenderingContext2D) {
     if (this.points.length < 2) return;
     ctx.strokeStyle = "black";
@@ -55,53 +50,71 @@ class MarkerLine implements Command {
   }
 }
 
-class ToolPreview implements Command {
-  private x: number;
-  private y: number;
-  private thickness: number;
-
-  constructor(x: number, y: number, thickness: number) {
-    this.x = x;
-    this.y = y;
-    this.thickness = thickness;
-  }
-
+class MarkerPreview implements Command {
+  constructor(public x: number, public y: number, private thickness: number) {}
   display(ctx: CanvasRenderingContext2D) {
-    ctx.strokeStyle = "gray";
-    ctx.globalAlpha = 0.5; 
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = "black";
     ctx.beginPath();
-    ctx.arc(this.x, this.y, this.thickness / 2, 0, 2 * Math.PI);
-    ctx.stroke();
-    ctx.globalAlpha = 1.0; 
+    ctx.arc(this.x, this.y, this.thickness / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+}
+
+class StickerCommand implements Command {
+  constructor(public emoji: string, public x: number, public y: number) {}
+  display(ctx: CanvasRenderingContext2D) {
+    ctx.font = "24px serif";
+    ctx.fillText(this.emoji, this.x, this.y);
+  }
+}
+
+class StickerPreview implements Command {
+  constructor(public emoji: string, public x: number, public y: number) {}
+  display(ctx: CanvasRenderingContext2D) {
+    ctx.globalAlpha = 0.5;
+    ctx.font = "24px serif";
+    ctx.fillText(this.emoji, this.x, this.y);
+    ctx.globalAlpha = 1.0;
   }
 }
 
 let displayList: Command[] = [];
 let redoStack: Command[] = [];
 let currentLine: MarkerLine | null = null;
-let currentThickness = 2;
-let currentPreview: ToolPreview | null = null;
+let currentPreview: Command | null = null;
+
+type ToolType = "marker" | "sticker";
+let activeTool: ToolType = "marker";
+let activeThickness = 2;
+let activeSticker: string | null = null;
 
 canvas.addEventListener("mousedown", (e) => {
-  currentLine = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
-  displayList.push(currentLine);
+  if (activeTool === "marker") {
+    currentLine = new MarkerLine(e.offsetX, e.offsetY, activeThickness);
+    displayList.push(currentLine);
+  } else if (activeTool === "sticker" && activeSticker) {
+    const cmd = new StickerCommand(activeSticker, e.offsetX, e.offsetY);
+    displayList.push(cmd);
+  }
   redoStack = [];
-  currentPreview = null; 
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
 canvas.addEventListener("mousemove", (e) => {
   if (currentLine) {
     currentLine.drag(e.offsetX, e.offsetY);
-    canvas.dispatchEvent(new Event("drawing-changed"));
-  } else {
-    currentPreview = new ToolPreview(e.offsetX, e.offsetY, currentThickness);
-    canvas.dispatchEvent(new Event("drawing-changed"));
   }
-});
 
-canvas.addEventListener("mouseleave", () => {
-  currentPreview = null;
+  if (activeTool === "marker") {
+    currentPreview = new MarkerPreview(e.offsetX, e.offsetY, activeThickness);
+  } else if (activeTool === "sticker" && activeSticker) {
+    currentPreview = new StickerPreview(activeSticker, e.offsetX, e.offsetY);
+  } else {
+    currentPreview = null;
+  }
+
   canvas.dispatchEvent(new Event("drawing-changed"));
 });
 
@@ -112,11 +125,9 @@ canvas.addEventListener("mouseup", () => {
 canvas.addEventListener("drawing-changed", () => {
   ctx.fillStyle = "white";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   for (const cmd of displayList) {
     cmd.display(ctx);
   }
-
   if (currentPreview) {
     currentPreview.display(ctx);
   }
@@ -133,14 +144,6 @@ app.append(undoBtn);
 const redoBtn = document.createElement("button");
 redoBtn.textContent = "Redo";
 app.append(redoBtn);
-
-const thinBtn = document.createElement("button");
-thinBtn.textContent = "Thin Marker";
-app.append(thinBtn);
-
-const thickBtn = document.createElement("button");
-thickBtn.textContent = "Thick Marker";
-app.append(thickBtn);
 
 clearBtn.addEventListener("click", () => {
   displayList = [];
@@ -162,10 +165,38 @@ redoBtn.addEventListener("click", () => {
   }
 });
 
-thinBtn.addEventListener("click", () => {
-  currentThickness = 2;
-});
+const toolPanel = document.createElement("div");
+toolPanel.style.display = "flex";
+toolPanel.style.gap = "8px";
+app.append(toolPanel);
 
+const thinBtn = document.createElement("button");
+thinBtn.textContent = "Thin Marker";
+thinBtn.addEventListener("click", () => {
+  activeTool = "marker";
+  activeThickness = 2;
+  activeSticker = null;
+  currentPreview = null;
+});
+toolPanel.append(thinBtn);
+
+const thickBtn = document.createElement("button");
+thickBtn.textContent = "Thick Marker";
 thickBtn.addEventListener("click", () => {
-  currentThickness = 8;
+  activeTool = "marker";
+  activeThickness = 8;
+  activeSticker = null;
+  currentPreview = null;
+});
+toolPanel.append(thickBtn);
+
+["🐱", "🌟", "🎈"].forEach((emoji) => {
+  const btn = document.createElement("button");
+  btn.textContent = emoji;
+  btn.addEventListener("click", () => {
+    activeTool = "sticker";
+    activeSticker = emoji;
+    currentPreview = null;
+  });
+  toolPanel.append(btn);
 });
