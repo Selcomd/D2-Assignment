@@ -30,9 +30,11 @@ interface Command {
 
 class MarkerLine implements Command {
   private points: { x: number; y: number }[] = [];
+  private thickness: number;
 
-  constructor(startX: number, startY: number) {
+  constructor(startX: number, startY: number, thickness: number) {
     this.points.push({ x: startX, y: startY });
+    this.thickness = thickness;
   }
 
   drag(x: number, y: number) {
@@ -42,12 +44,14 @@ class MarkerLine implements Command {
   display(ctx: CanvasRenderingContext2D) {
     if (this.points.length < 2) return;
     ctx.strokeStyle = "black";
+    ctx.lineWidth = this.thickness;
     ctx.beginPath();
     ctx.moveTo(this.points[0].x, this.points[0].y);
     for (let i = 1; i < this.points.length; i++) {
       ctx.lineTo(this.points[i].x, this.points[i].y);
     }
     ctx.stroke();
+    ctx.lineWidth = 1;
   }
 }
 
@@ -55,8 +59,37 @@ let displayList: Command[] = [];
 let redoStack: Command[] = [];
 let currentLine: MarkerLine | null = null;
 
+let currentThickness = 2;
+
+const toolbar = document.createElement("div");
+toolbar.style.display = "flex";
+toolbar.style.gap = "8px";
+app.append(toolbar);
+
+const thinBtn = document.createElement("button");
+thinBtn.textContent = "Thin Marker";
+toolbar.append(thinBtn);
+
+const thickBtn = document.createElement("button");
+thickBtn.textContent = "Thick Marker";
+toolbar.append(thickBtn);
+
+thinBtn.addEventListener("click", () => {
+  currentThickness = 2;
+  thinBtn.classList.add("selectedTool");
+  thickBtn.classList.remove("selectedTool");
+});
+
+thickBtn.addEventListener("click", () => {
+  currentThickness = 6;
+  thickBtn.classList.add("selectedTool");
+  thinBtn.classList.remove("selectedTool");
+});
+
+thinBtn.classList.add("selectedTool");
+
 canvas.addEventListener("mousedown", (e) => {
-  currentLine = new MarkerLine(e.offsetX, e.offsetY);
+  currentLine = new MarkerLine(e.offsetX, e.offsetY, currentThickness);
   displayList.push(currentLine);
   redoStack = [];
   canvas.dispatchEvent(new Event("drawing-changed"));
