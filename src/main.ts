@@ -90,6 +90,8 @@ let activeTool: ToolType = "marker";
 let activeThickness = 2;
 let activeSticker: string | null = null;
 
+const stickers = ["🐱", "🌟", "🎈"];
+
 canvas.addEventListener("mousedown", (e) => {
   if (activeTool === "marker") {
     currentLine = new MarkerLine(e.offsetX, e.offsetY, activeThickness);
@@ -190,13 +192,30 @@ thickBtn.addEventListener("click", () => {
 });
 toolPanel.append(thickBtn);
 
-["🐱", "🌟", "🎈"].forEach((emoji) => {
-  const btn = document.createElement("button");
-  btn.textContent = emoji;
-  btn.addEventListener("click", () => {
-    activeTool = "sticker";
-    activeSticker = emoji;
-    currentPreview = null;
+const updateStickers = () => {
+  toolPanel.querySelectorAll(".sticker-btn").forEach((b) => b.remove());
+
+  stickers.forEach((emoji) => {
+    const btn = document.createElement("button");
+    btn.className = "sticker-btn";
+    btn.textContent = emoji;
+    btn.addEventListener("click", () => {
+      activeTool = "sticker";
+      activeSticker = emoji;
+      currentPreview = null;
+    });
+    toolPanel.append(btn);
   });
-  toolPanel.append(btn);
+};
+updateStickers();
+
+const addStickerBtn = document.createElement("button");
+addStickerBtn.textContent = "+ Custom Sticker";
+addStickerBtn.addEventListener("click", () => {
+  const text = prompt("Enter custom sticker (emoji or short text):", "🧩");
+  if (text && text.trim()) {
+    stickers.push(text.trim());
+    updateStickers();
+  }
 });
+toolPanel.append(addStickerBtn);
