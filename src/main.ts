@@ -11,7 +11,7 @@ app.style.height = "100vh";
 document.body.append(app);
 
 const title = document.createElement("h1");
-title.textContent = "Catvas";
+title.textContent = "🐱Catvas🐱";
 title.style.fontFamily = "Comic Sans MS, sans-serif";
 title.style.color = "#333";
 app.append(title);
@@ -19,7 +19,7 @@ app.append(title);
 const canvas = document.createElement("canvas");
 canvas.width = 256;
 canvas.height = 256;
-canvas.id = "sketchpad";
+canvas.id = "sketchpad"; 
 canvas.style.cursor = "none";
 canvas.style.backgroundColor = "#fffdf9";
 app.append(canvas);
@@ -34,12 +34,7 @@ interface Command {
 
 class MarkerLine implements Command {
   private points: { x: number; y: number }[] = [];
-  constructor(
-    startX: number,
-    startY: number,
-    private thickness: number,
-    private color: string,
-  ) {
+  constructor(startX: number, startY: number, private thickness: number, private color: string) {
     this.points.push({ x: startX, y: startY });
   }
   drag(x: number, y: number) {
@@ -60,12 +55,7 @@ class MarkerLine implements Command {
 }
 
 class MarkerPreview implements Command {
-  constructor(
-    public x: number,
-    public y: number,
-    private thickness: number,
-    private color: string,
-  ) {}
+  constructor(public x: number, public y: number, private thickness: number, private color: string) {}
   display(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = this.color;
@@ -77,29 +67,27 @@ class MarkerPreview implements Command {
 }
 
 class StickerCommand implements Command {
-  constructor(
-    public emoji: string,
-    public x: number,
-    public y: number,
-    private size: number,
-  ) {}
+  constructor(public emoji: string, public x: number, public y: number, private size: number, private rotation: number) {}
   display(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate((this.rotation * Math.PI) / 180);
     ctx.font = `${this.size}px serif`;
-    ctx.fillText(this.emoji, this.x, this.y);
+    ctx.fillText(this.emoji, -this.size / 2, this.size / 2);
+    ctx.restore();
   }
 }
 
 class StickerPreview implements Command {
-  constructor(
-    public emoji: string,
-    public x: number,
-    public y: number,
-    private size: number,
-  ) {}
+  constructor(public emoji: string, public x: number, public y: number, private size: number, private rotation: number) {}
   display(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate((this.rotation * Math.PI) / 180);
     ctx.globalAlpha = 0.5;
     ctx.font = `${this.size}px serif`;
-    ctx.fillText(this.emoji, this.x, this.y);
+    ctx.fillText(this.emoji, -this.size / 2, this.size / 2);
+    ctx.restore();
     ctx.globalAlpha = 1.0;
   }
 }
@@ -112,28 +100,20 @@ let currentPreview: Command | null = null;
 type ToolType = "marker" | "sticker";
 let activeTool: ToolType = "marker";
 let activeThickness = 3;
-let activeColor = "#000";
+let hue = 0;
 let activeSticker: string | null = null;
 const stickerSize = 28;
+let stickerRotation = 0;
 
 const stickers = ["🐱", "🐾", "🧶", "🍣"];
 
 canvas.addEventListener("mousedown", (e) => {
   if (activeTool === "marker") {
-    currentLine = new MarkerLine(
-      e.offsetX,
-      e.offsetY,
-      activeThickness,
-      activeColor,
-    );
+    const color = `hsl(${hue}, 100%, 35%)`;
+    currentLine = new MarkerLine(e.offsetX, e.offsetY, activeThickness, color);
     displayList.push(currentLine);
   } else if (activeTool === "sticker" && activeSticker) {
-    const cmd = new StickerCommand(
-      activeSticker,
-      e.offsetX,
-      e.offsetY,
-      stickerSize,
-    );
+    const cmd = new StickerCommand(activeSticker, e.offsetX, e.offsetY, stickerSize, stickerRotation);
     displayList.push(cmd);
   }
   redoStack = [];
@@ -146,19 +126,10 @@ canvas.addEventListener("mousemove", (e) => {
   }
 
   if (activeTool === "marker") {
-    currentPreview = new MarkerPreview(
-      e.offsetX,
-      e.offsetY,
-      activeThickness,
-      activeColor,
-    );
+    const color = `hsl(${hue}, 100%, 35%)`;
+    currentPreview = new MarkerPreview(e.offsetX, e.offsetY, activeThickness, color);
   } else if (activeTool === "sticker" && activeSticker) {
-    currentPreview = new StickerPreview(
-      activeSticker,
-      e.offsetX,
-      e.offsetY,
-      stickerSize,
-    );
+    currentPreview = new StickerPreview(activeSticker, e.offsetX, e.offsetY, stickerSize, stickerRotation);
   } else {
     currentPreview = null;
   }
@@ -231,7 +202,7 @@ makeButton("💾 Export", () => {
   }
   const anchor = document.createElement("a");
   anchor.href = exportCanvas.toDataURL("image/png");
-  anchor.download = "cat_canvas.png";
+  anchor.download = "cat_canvas_deluxe.png";
   anchor.click();
 });
 
@@ -242,30 +213,51 @@ toolPanel.style.justifyContent = "center";
 toolPanel.style.gap = "8px";
 app.append(toolPanel);
 
-const _thinBtn = makeButton("🖊️ Pen", () => {
+makeButton("🖊️ Pen", () => {
   activeTool = "marker";
   activeThickness = 2;
-  activeColor = "#222";
   activeSticker = null;
   currentPreview = null;
 });
 
-const _thickBtn = makeButton("🖌️ Paint Brush", () => {
+makeButton("🖌️ Paint Brush", () => {
   activeTool = "marker";
   activeThickness = 8;
-  activeColor = "#000";
   activeSticker = null;
   currentPreview = null;
 });
 
-const colorBtn = document.createElement("input");
-colorBtn.type = "color";
-colorBtn.value = "#000000";
-colorBtn.style.width = "50px";
-colorBtn.addEventListener("input", () => {
-  activeColor = colorBtn.value;
+const hueLabel = document.createElement("label");
+hueLabel.textContent = "Hue:";
+hueLabel.style.fontFamily = "sans-serif";
+hueLabel.style.color = "#444";
+
+const hueSlider = document.createElement("input");
+hueSlider.type = "range";
+hueSlider.min = "0";
+hueSlider.max = "360";
+hueSlider.value = hue.toString();
+hueSlider.style.width = "120px";
+hueSlider.addEventListener("input", () => {
+  hue = Number(hueSlider.value);
 });
-toolPanel.append(colorBtn);
+toolPanel.append(hueLabel, hueSlider);
+
+const rotLabel = document.createElement("label");
+rotLabel.textContent = "Sticker Rotation:";
+rotLabel.style.fontFamily = "sans-serif";
+rotLabel.style.color = "#444";
+
+const rotSlider = document.createElement("input");
+rotSlider.type = "range";
+rotSlider.min = "0";
+rotSlider.max = "360";
+rotSlider.value = stickerRotation.toString();
+rotSlider.style.width = "120px";
+rotSlider.addEventListener("input", () => {
+  stickerRotation = Number(rotSlider.value);
+});
+toolPanel.append(rotLabel, rotSlider);
 
 const updateStickers = () => {
   toolPanel.querySelectorAll(".sticker-btn").forEach((b) => b.remove());
@@ -284,7 +276,7 @@ const updateStickers = () => {
 };
 updateStickers();
 
-const _addStickerBtn = makeButton("+ Custom", () => {
+makeButton("+ Custom", () => {
   const text = prompt("Enter custom sticker (emoji or short text):", "😺");
   if (text && text.trim()) {
     stickers.push(text.trim());
