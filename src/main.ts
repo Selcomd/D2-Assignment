@@ -19,7 +19,7 @@ app.append(title);
 const canvas = document.createElement("canvas");
 canvas.width = 256;
 canvas.height = 256;
-canvas.id = "sketchpad"; 
+canvas.id = "sketchpad";
 canvas.style.cursor = "none";
 canvas.style.backgroundColor = "#fffdf9";
 app.append(canvas);
@@ -34,7 +34,12 @@ interface Command {
 
 class MarkerLine implements Command {
   private points: { x: number; y: number }[] = [];
-  constructor(startX: number, startY: number, private thickness: number, private color: string) {
+  constructor(
+    startX: number,
+    startY: number,
+    private thickness: number,
+    private color: string,
+  ) {
     this.points.push({ x: startX, y: startY });
   }
   drag(x: number, y: number) {
@@ -55,7 +60,12 @@ class MarkerLine implements Command {
 }
 
 class MarkerPreview implements Command {
-  constructor(public x: number, public y: number, private thickness: number, private color: string) {}
+  constructor(
+    public x: number,
+    public y: number,
+    private thickness: number,
+    private color: string,
+  ) {}
   display(ctx: CanvasRenderingContext2D) {
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = this.color;
@@ -67,7 +77,13 @@ class MarkerPreview implements Command {
 }
 
 class StickerCommand implements Command {
-  constructor(public emoji: string, public x: number, public y: number, private size: number, private rotation: number) {}
+  constructor(
+    public emoji: string,
+    public x: number,
+    public y: number,
+    private size: number,
+    private rotation: number,
+  ) {}
   display(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -79,7 +95,13 @@ class StickerCommand implements Command {
 }
 
 class StickerPreview implements Command {
-  constructor(public emoji: string, public x: number, public y: number, private size: number, private rotation: number) {}
+  constructor(
+    public emoji: string,
+    public x: number,
+    public y: number,
+    private size: number,
+    private rotation: number,
+  ) {}
   display(ctx: CanvasRenderingContext2D) {
     ctx.save();
     ctx.translate(this.x, this.y);
@@ -113,7 +135,13 @@ canvas.addEventListener("mousedown", (e) => {
     currentLine = new MarkerLine(e.offsetX, e.offsetY, activeThickness, color);
     displayList.push(currentLine);
   } else if (activeTool === "sticker" && activeSticker) {
-    const cmd = new StickerCommand(activeSticker, e.offsetX, e.offsetY, stickerSize, stickerRotation);
+    const cmd = new StickerCommand(
+      activeSticker,
+      e.offsetX,
+      e.offsetY,
+      stickerSize,
+      stickerRotation,
+    );
     displayList.push(cmd);
   }
   redoStack = [];
@@ -127,9 +155,20 @@ canvas.addEventListener("mousemove", (e) => {
 
   if (activeTool === "marker") {
     const color = `hsl(${hue}, 100%, 35%)`;
-    currentPreview = new MarkerPreview(e.offsetX, e.offsetY, activeThickness, color);
+    currentPreview = new MarkerPreview(
+      e.offsetX,
+      e.offsetY,
+      activeThickness,
+      color,
+    );
   } else if (activeTool === "sticker" && activeSticker) {
-    currentPreview = new StickerPreview(activeSticker, e.offsetX, e.offsetY, stickerSize, stickerRotation);
+    currentPreview = new StickerPreview(
+      activeSticker,
+      e.offsetX,
+      e.offsetY,
+      stickerSize,
+      stickerRotation,
+    );
   } else {
     currentPreview = null;
   }
