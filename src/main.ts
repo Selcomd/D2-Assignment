@@ -147,6 +147,10 @@ const redoBtn = document.createElement("button");
 redoBtn.textContent = "Redo";
 app.append(redoBtn);
 
+const exportBtn = document.createElement("button");
+exportBtn.textContent = "Export PNG";
+app.append(exportBtn);
+
 clearBtn.addEventListener("click", () => {
   displayList = [];
   redoStack = [];
@@ -165,6 +169,26 @@ redoBtn.addEventListener("click", () => {
     displayList.push(redoStack.pop()!);
     canvas.dispatchEvent(new Event("drawing-changed"));
   }
+});
+
+exportBtn.addEventListener("click", () => {
+  const exportCanvas = document.createElement("canvas");
+  exportCanvas.width = 1024;
+  exportCanvas.height = 1024;
+  const exportCtx = exportCanvas.getContext("2d")!;
+
+  exportCtx.fillStyle = "white";
+  exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  exportCtx.scale(4, 4);
+
+  for (const cmd of displayList) {
+    cmd.display(exportCtx);
+  }
+
+  const anchor = document.createElement("a");
+  anchor.href = exportCanvas.toDataURL("image/png");
+  anchor.download = "sketchpad.png";
+  anchor.click();
 });
 
 const toolPanel = document.createElement("div");
@@ -194,7 +218,6 @@ toolPanel.append(thickBtn);
 
 const updateStickers = () => {
   toolPanel.querySelectorAll(".sticker-btn").forEach((b) => b.remove());
-
   stickers.forEach((emoji) => {
     const btn = document.createElement("button");
     btn.className = "sticker-btn";
